@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beam Deflection & Stress Calculator</title>
-    <!-- Chart.js 라이브러리 추가 (처짐 곡선 그래프용) -->
+    <!-- Chart.js 라이브러리 추가 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -279,7 +279,7 @@
                     </div>
 
                     <button type="button" class="btn-submit" onclick="calculate()">계산 및 시각화 실행</button>
-                    <div id="errorMsg" class="error-msg">입력값을 확인해주세요. (모든 수치는 0보다 커야 하며, 하중 위치는 보 길이 내에 위치해야 합니다)</div>
+                    <div id="errorMsg" class="error-msg">입력값을 확인해주세요.</div>
                 </form>
             </div>
         </section>
@@ -307,29 +307,29 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>단면 2차 모멘트 ($I$)</td>
+                            <td>단면 2차 모멘트 (I)</td>
                             <td id="resI">-</td>
-                            <td>$\text{mm}^4$</td>
+                            <td>mm⁴</td>
                         </tr>
                         <tr>
-                            <td>최대 모멘트 ($M_{max}$)</td>
+                            <td>최대 모멘트 (M_max)</td>
                             <td id="resM">-</td>
-                            <td>$\text{N}\cdot\text{m}$</td>
+                            <td>N·m</td>
                         </tr>
                         <tr>
-                            <td>최대 휨응력 ($\sigma_{max}$)</td>
+                            <td>최대 휨응력 (σ_max)</td>
                             <td id="resStress">-</td>
-                            <td>$\text{MPa}$</td>
+                            <td>MPa</td>
                         </tr>
                         <tr>
-                            <td>최대 처짐량 ($\delta_{max}$)</td>
+                            <td>최대 처짐량 (δ_max)</td>
                             <td id="resDef">-</td>
-                            <td>$\text{mm}$</td>
+                            <td>mm</td>
                         </tr>
                         <tr>
-                            <td>최대 처짐 위치 ($x_{max}$)</td>
+                            <td>최대 처짐 위치 (x_max)</td>
                             <td id="resPos">-</td>
-                            <td>$\text{m}$</td>
+                            <td>m</td>
                         </tr>
                     </tbody>
                 </table>
@@ -369,11 +369,11 @@
 
             // 유효성 검사
             if (isNaN(L) || isNaN(P) || isNaN(a) || L <= 0 || P <= 0 || a < 0 || a > L) {
-                showError("보 길이 및 하중은 0보다 커야 하며, 하중 위치 $a$는 $0 \le a \le L$ 이내여야 합니다.");
+                showError("보 길이 및 하중은 0보다 커야 하며, 하중 위치 a는 0 ≤ a ≤ L 이내여야 합니다.");
                 return;
             }
 
-            // 단면 2차 모멘트(I) 및 중립축 거리가 끝단까지의 거리(c) 계산
+            // 단면 2차 모멘트(I) 및 중립축 거리(c) 계산
             let I = 0; // mm^4
             let c = 0; // mm
 
@@ -423,8 +423,8 @@
                 // 단순보 계산식
                 maxM = (P * a * b) / L;
 
-                // 처짐량 계산
-                for (let i <= 0; i <= numPoints; i++) {
+                // 처짐량 계산 (오류 수정 부분: i = 0)
+                for (let i = 0; i <= numPoints; i++) {
                     let x = (L / numPoints) * i;
                     xVals.push(x.toFixed(2));
                     let v = 0; // deflection
@@ -441,7 +441,6 @@
                     maxDef = (P * Math.pow(L, 3)) / (48 * E * I_m4);
                     maxPos = L / 2;
                 } else {
-                    // 수식에 의한 최대 처짐 위치
                     if (a > b) {
                         maxPos = Math.sqrt((a * (a + 2 * b)) / 3);
                         maxDef = (P * a * (a + 2 * b) * Math.sqrt(3 * a * (a + 2 * b))) / (27 * E * I_m4 * L);
@@ -474,7 +473,7 @@
                 maxPos = L; // 자유단에서 최대 처짐
             }
 
-            // 최대 휨 응력 calculation (MPa)
+            // 최대 휨 응력 계산 (MPa)
             const maxStress = (maxM * c_m) / I_m4 / 1e6;
 
             // 결과 표 출력
@@ -484,7 +483,7 @@
             document.getElementById('resDef').innerText = (maxDef * 1000).toFixed(3);
             document.getElementById('resPos').innerText = maxPos.toFixed(2);
 
-            // Canvas 그린 기
+            // Canvas 그리기
             drawBeam(beamType, L, a, defVals);
 
             // Chart.js 그래프 그리기
@@ -527,7 +526,7 @@
 
             // 2. 처짐 변형선 (Scale 처리)
             const maxDefVal = Math.max(...defVals);
-            const scaleFactor = maxDefVal > 0 ? Math.min(50 / maxDefVal, 2.0) : 1; // 화면 표현용 스케일
+            const scaleFactor = maxDefVal > 0 ? Math.min(50 / maxDefVal, 2.0) : 1; 
 
             ctx.beginPath();
             ctx.moveTo(startX, startY);
@@ -624,14 +623,14 @@
                         },
                         y: {
                             title: { display: true, text: '처짐량 (mm)' },
-                            reverse: true // 아래 방향 처짐을 시각적으로 표현하기 위해 반전
+                            reverse: true 
                         }
                     }
                 }
             });
         }
 
-        // 페이지 로드 시 initial 실행
+        // 페이지 로드 시 자동으로 첫 계산 실행
         window.onload = function() {
             calculate();
         };
