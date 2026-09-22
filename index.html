@@ -356,7 +356,7 @@
             <div class="card">
                 <div class="card-header-actions">
                     <h2>3. 보 휨 형상 시각화 (2D Schematic)</h2>
-                    <button class="btn-action" onclick="downloadCanvasImage()">📷 이미지 저장</button>
+                    <button class="btn-action" onclick="downloadCanvasImage()">📷 형상 이미지 저장</button>
                 </div>
                 <div class="canvas-container">
                     <canvas id="beamCanvas" height="200"></canvas>
@@ -426,6 +426,7 @@
             <div class="card" style="margin-bottom: 0;">
                 <div class="card-header-actions">
                     <h2>5. 보 전체 처짐 곡선 (Deflection Curve Plot)</h2>
+                    <button class="btn-action" onclick="downloadChartImage()">📉 차트 이미지 저장</button>
                 </div>
                 <div class="chart-container">
                     <canvas id="deflectionChart"></canvas>
@@ -437,6 +438,19 @@
     <script>
         let chartInstance = null;
         let lastCalculatedData = null; // CSV 출력을 위한 데이터 저장 변수
+
+        // Chart.js 배경색 흰색 지정을 위한 커스텀 플러그인 (이미지 저장 시 배경이 검은색/투명하게 나오는 현상 방지)
+        const whiteBackgroundPlugin = {
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart) => {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
+            }
+        };
 
         // 단면 종류 변경 시 입력창 전환
         document.getElementById('sectionType').addEventListener('change', function() {
@@ -637,6 +651,10 @@
 
             ctx.clearRect(0, 0, width, height);
 
+            // 배경색 흰색 지정
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
             // 1. 초기 직선 중립축
             ctx.beginPath();
             ctx.setLineDash([5, 5]);
@@ -749,7 +767,8 @@
                             reverse: true 
                         }
                     }
-                }
+                },
+                plugins: [whiteBackgroundPlugin] // 배경색 흰색 플러그인 등록
             });
         }
 
@@ -757,7 +776,7 @@
         function downloadCSV() {
             if (!lastCalculatedData) return;
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // 한글 깨짐 방지 BOM 추가
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             csvContent += "Position_x(m),Deflection(mm),BendingMoment(N.m)\n";
 
             for (let i = 0; i < lastCalculatedData.xVals.length; i++) {
@@ -773,12 +792,21 @@
             document.body.removeChild(link);
         }
 
-        // Canvas 이미지 저장 기능
+        // 2D 보 형상 Canvas 이미지 저장 기능
         function downloadCanvasImage() {
             const canvas = document.getElementById('beamCanvas');
             const link = document.createElement('a');
             link.download = 'beam_deflection_schematic.png';
             link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // 처짐 곡선 Chart.js 그래프 이미지 저장 기능
+        function downloadChartImage() {
+            if (!chartInstance) return;
+            const link = document.createElement('a');
+            link.download = 'deflection_curve_plot.png';
+            link.href = chartInstance.toBase64Image('image/png', 1.0);
             link.click();
         }
 
