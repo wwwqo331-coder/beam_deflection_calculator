@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보 처짐 및 응력 해석 계산기 (Beam Deflection Calculator)</title>
+    <!-- Chart.js 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+            --error-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 24px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 960px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        header {
+            grid-column: 1 / -1;
+            background-color: var(--card-bg);
+            padding: 20px 28px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+            color: #0f172a;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #475569;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            background-color: #fff;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .dynamic-param {
+            display: none;
+            background-color: #f1f5f9;
+            padding: 14px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .error-msg {
+            color: var(--error-color);
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+            padding: 10px;
+            background-color: #fef2f2;
+            border-radius: 6px;
+            border: 1px solid #fee2e2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        canvas {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+        }
+
+        .canvas-container {
+            position: relative;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>보 처짐 및 응력 해석 시스템 (Structural Beam Analyzer)</h1>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 500;">Single-File Web App</span>
+        </header>
+
+        <!-- 좌측 조건 입력 폼 -->
+        <section class="sidebar">
+            <div class="card">
+                <h2>1. 기본 조건 설정</h2>
+                <form id="beamForm">
+                    <div class="form-group">
+                        <label for="beamType">보 종류 (Beam Type)</label>
+                        <select id="beamType">
+                            <option value="simply">Simply Supported (단순보)</option>
+                            <option value="cantilever">Cantilever (외팔보)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="material">재질 선택 (Material)</label>
+                        <select id="material">
+                            <option value="200">Steel (E = 200 GPa)</option>
+                            <option value="70">Aluminum (E = 70 GPa)</option>
+                            <option value="10">Wood (E = 10 GPa)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="length">보 길이 L (m)</label>
+                        <input type="number" id="length" step="0.1" value="2.0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="load">집중 하중 P (N)</label>
+                        <input type="number" id="load" step="10" value="1000">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loadPos">하중 위치 a (지점 A로부터 거리, m)</label>
+                        <input type="number" id="loadPos" step="0.1" value="1.0">
+                    </div>
+
+                    <h2 style="margin-top: 24px;">2. 단면 형상 설정</h2>
+                    <div class="form-group">
+                        <label for="sectionType">단면 종류</label>
+                        <select id="sectionType">
+                            <option value="rect">사각형 (Rectangular)</option>
+                            <option value="circle">원형 (Circle)</option>
+                            <option value="pipe">중공원형 (Hollow Pipe)</option>
+                            <option value="ibeam">I-빔 (I-Beam)</option>
+                        </select>
+                    </div>
+
+                    <!-- 사각형 파라미터 -->
+                    <div id="param-rect" class="dynamic-param" style="display: block;">
+                        <div class="form-group">
+                            <label>폭 b (mm)</label>
+                            <input type="number" id="rectB" value="50">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>높이 h (mm)</label>
+                            <input type="number" id="rectH" value="100">
+                        </div>
+                    </div>
+
+                    <!-- 원형 파라미터 -->
+                    <div id="param-circle" class="dynamic-param">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>지름 d (mm)</label>
+                            <input type="number" id="circleD" value="80">
+                        </div>
+                    </div>
+
+                    <!-- 중공원형 파라미터 -->
+                    <div id="param-pipe" class="dynamic-param">
+                        <div class="form-group">
+                            <label>외경 D (mm)</label>
+                            <input type="number" id="pipeD" value="80">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>내경 d (mm)</label>
+                            <input type="number" id="piped" value="60">
+                        </div>
+                    </div>
+
+                    <!-- I-빔 파라미터 -->
+                    <div id="param-ibeam" class="dynamic-param">
+                        <div class="form-group">
+                            <label>플랜지 폭 B (mm)</label>
+                            <input type="number" id="ibeamB" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label>전체 높이 H (mm)</label>
+                            <input type="number" id="ibeamH" value="150">
+                        </div>
+                        <div class="form-group">
+                            <label>플랜지 두께 tf (mm)</label>
+                            <input type="number" id="ibeamTf" value="10">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>웨브 두께 tw (mm)</label>
+                            <input type="number" id="ibeamTw" value="6">
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-submit" onclick="calculate()">계산 및 시각화 실행</button>
+                    <div id="errorMsg" class="error-msg"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 우측 시각화 및 결과 패널 -->
+        <main class="main-content">
+            <!-- Canvas 보 변형 시각화 -->
+            <div class="card">
+                <h2>3. 보 휨 형상 시각화 (2D Schematic)</h2>
+                <div class="canvas-container">
+                    <canvas id="beamCanvas" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- 결과 대시보드 표 -->
+            <div class="card">
+                <h2>4. 구조 해석 결과 (Results)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>평가 항목 (Parameter)</th>
+                            <th>계산 결과 (Value)</th>
+                            <th>단위 (Unit)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>단면 2차 모멘트 (I)</td>
+                            <td id="resI">-</td>
+                            <td>mm⁴</td>
+                        </tr>
+                        <tr>
+                            <td>최대 모멘트 (M<sub>max</sub>)</td>
+                            <td id="resM">-</td>
+                            <td>N·m</td>
+                        </tr>
+                        <tr>
+                            <td>최대 휨응력 (σ<sub>max</sub>)</td>
+                            <td id="resStress">-</td>
+                            <td>MPa</td>
+                        </tr>
+                        <tr>
+                            <td>최대 처짐량 (δ<sub>max</sub>)</td>
+                            <td id="resDef">-</td>
+                            <td>mm</td>
+                        </tr>
+                        <tr>
+                            <td>최대 처짐 발생 위치 (x<sub>max</sub>)</td>
+                            <td id="resPos">-</td>
+                            <td>m</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 처짐 곡선 차트 -->
+            <div class="card" style="margin-bottom: 0;">
+                <h2>5. 보 전체 처짐 곡선 (Deflection Curve Plot)</h2>
+                <div class="chart-container">
+                    <canvas id="deflectionChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let chartInstance = null;
+
+        // 단면 종류 변경 시 입력창 전환
+        document.getElementById('sectionType').addEventListener('change', function() {
+            document.querySelectorAll('.dynamic-param').forEach(el => el.style.display = 'none');
+            document.getElementById('param-' + this.value).style.display = 'block';
+        });
+
+        function calculate() {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.style.display = 'none';
+
+            // 입력값 파싱
+            const beamType = document.getElementById('beamType').value;
+            const E_GPa = parseFloat(document.getElementById('material').value);
+            const E = E_GPa * 1e9; // Pa
+            const L = parseFloat(document.getElementById('length').value); // m
+            const P = parseFloat(document.getElementById('load').value); // N
+            const a = parseFloat(document.getElementById('loadPos').value); // m
+            const section = document.getElementById('sectionType').value;
+
+            // 기본 조건 에러 검증
+            if (isNaN(L) || isNaN(P) || isNaN(a) || L <= 0 || P <= 0 || a < 0 || a > L) {
+                showError("입력값을 확인해주세요. 보 길이와 하중은 0보다 커야 하며, 하중 위치 a는 0 ≤ a ≤ L 범위 내여야 합니다.");
+                return;
+            }
+
+            let I = 0; // mm^4
+            let c = 0; // mm (중립축에서 최외각까지의 거리)
+
+            // 단면별 I 및 c 계산
+            if (section === 'rect') {
+                const b = parseFloat(document.getElementById('rectB').value);
+                const h = parseFloat(document.getElementById('rectH').value);
+                if (isNaN(b) || isNaN(h) || b <= 0 || h <= 0) return showError("단면 치수는 모두 0보다 커야 합니다.");
+                I = (b * Math.pow(h, 3)) / 12;
+                c = h / 2;
+            } else if (section === 'circle') {
+                const d = parseFloat(document.getElementById('circleD').value);
+                if (isNaN(d) || d <= 0) return showError("지름은 0보다 커야 합니다.");
+                I = (Math.PI * Math.pow(d, 4)) / 64;
+                c = d / 2;
+            } else if (section === 'pipe') {
+                const D = parseFloat(document.getElementById('pipeD').value);
+                const d = parseFloat(document.getElementById('piped').value);
+                if (isNaN(D) || isNaN(d) || D <= 0 || d <= 0 || d >= D) return showError("내경 d는 0보다 크고 외경 D보다 작아야 합니다.");
+                I = (Math.PI * (Math.pow(D, 4) - Math.pow(d, 4))) / 64;
+                c = D / 2;
+            } else if (section === 'ibeam') {
+                const B = parseFloat(document.getElementById('ibeamB').value);
+                const H = parseFloat(document.getElementById('ibeamH').value);
+                const tf = parseFloat(document.getElementById('ibeamTf').value);
+                const tw = parseFloat(document.getElementById('ibeamTw').value);
+                if (isNaN(B) || isNaN(H) || isNaN(tf) || isNaN(tw) || B <= 0 || H <= 0 || tf <= 0 || tw <= 0 || 2*tf >= H || tw >= B) {
+                    return showError("I-빔 치수가 올바르지 않습니다. (플랜지 두께 합 < 높이, 웨브 두께 < 폭)");
+                }
+                const h_inner = H - 2 * tf;
+                const b_inner = B - tw;
+                I = (B * Math.pow(H, 3) - b_inner * Math.pow(h_inner, 3)) / 12;
+                c = H / 2;
+            }
+
+            const I_m4 = I * 1e-12; // mm^4 -> m^4
+            const c_m = c * 1e-3;   // mm -> m
+            const b = L - a;
+
+            let maxM = 0;   // N*m
+            let maxDef = 0; // m
+            let maxPos = 0; // m
+
+            const numPoints = 100;
+            const xVals = [];
+            const defVals = []; // 처짐량 (mm)
+
+            if (beamType === 'simply') {
+                // 단순보 해석
+                maxM = (P * a * b) / L;
+
+                for (let i = 0; i <= numPoints; i++) {
+                    let x = (L / numPoints) * i;
+                    xVals.push(x.toFixed(2));
+                    let v = 0;
+                    if (x <= a) {
+                        v = (P * b * x * (L * L - b * b - x * x)) / (6 * E * I_m4 * L);
+                    } else {
+                        v = (P * a * (L - x) * (2 * L * x - x * x - a * a)) / (6 * E * I_m4 * L);
+                    }
+                    defVals.push(v * 1000); // mm 단위 변경
+                }
+
+                if (a === L / 2) {
+                    maxDef = (P * Math.pow(L, 3)) / (48 * E * I_m4);
+                    maxPos = L / 2;
+                } else if (a > b) {
+                    maxPos = Math.sqrt((a * (a + 2 * b)) / 3);
+                    maxDef = (P * a * (a + 2 * b) * Math.sqrt(3 * a * (a + 2 * b))) / (27 * E * I_m4 * L);
+                } else {
+                    const a_temp = b;
+                    const b_temp = a;
+                    const x_from_right = Math.sqrt((a_temp * (a_temp + 2 * b_temp)) / 3);
+                    maxPos = L - x_from_right;
+                    maxDef = (P * a_temp * (a_temp + 2 * b_temp) * Math.sqrt(3 * a_temp * (a_temp + 2 * b_temp))) / (27 * E * I_m4 * L);
+                }
+
+            } else {
+                // 외팔보 해석 (고정단 x=0, 자유단 x=L)
+                maxM = P * a; // 고정단 발생 최대 모멘트
+
+                for (let i = 0; i <= numPoints; i++) {
+                    let x = (L / numPoints) * i;
+                    xVals.push(x.toFixed(2));
+                    let v = 0;
+                    if (x <= a) {
+                        v = (P * x * x * (3 * a - x)) / (6 * E * I_m4);
+                    } else {
+                        v = (P * a * a * (3 * x - a)) / (6 * E * I_m4);
+                    }
+                    defVals.push(v * 1000);
+                }
+
+                maxDef = (P * a * a * (3 * L - a)) / (6 * E * I_m4);
+                maxPos = L;
+            }
+
+            // 최대 휨 응력 (MPa)
+            const maxStress = (maxM * c_m) / I_m4 / 1e6;
+
+            // 결과 값 표에 대입
+            document.getElementById('resI').innerText = I.toLocaleString(undefined, {maximumFractionDigits: 1});
+            document.getElementById('resM').innerText = maxM.toFixed(2);
+            document.getElementById('resStress').innerText = maxStress.toFixed(2);
+            document.getElementById('resDef').innerText = (maxDef * 1000).toFixed(3);
+            document.getElementById('resPos').innerText = maxPos.toFixed(2);
+
+            // Canvas 시각화 업데이트
+            drawBeam(beamType, L, a, defVals);
+
+            // Chart.js 그래프 업데이트
+            drawChart(xVals, defVals);
+        }
+
+        function showError(msg) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.innerText = msg;
+            errorEl.style.display = 'block';
+        }
+
+        function drawBeam(beamType, L, a, defVals) {
+            const canvas = document.getElementById('beamCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 200;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = 60;
+            const beamLengthPx = width - 2 * padding;
+            const startX = padding;
+            const startY = 70;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. 초기 직선 중립축 (점선)
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX + beamLengthPx, startY);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. 변형된 휨 형상 (Scale 적용)
+            const maxDefVal = Math.max(...defVals);
+            const scaleFactor = maxDefVal > 0 ? Math.min(45 / maxDefVal, 3.0) : 1; 
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            for (let i = 0; i < defVals.length; i++) {
+                let xPx = startX + (i / (defVals.length - 1)) * beamLengthPx;
+                let yPx = startY + defVals[i] * scaleFactor;
+                ctx.lineTo(xPx, yPx);
+            }
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // 3. 지지 조건 그리기
+            ctx.fillStyle = '#475569';
+            ctx.strokeStyle = '#475569';
+
+            if (beamType === 'simply') {
+                // 좌측 Pin
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(startX - 10, startY + 18);
+                ctx.lineTo(startX + 10, startY + 18);
+                ctx.closePath();
+                ctx.fill();
+
+                // 우측 Roller
+                ctx.beginPath();
+                ctx.arc(startX + beamLengthPx, startY + 10, 8, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                // 외팔보 고정 벽면
+                ctx.fillRect(startX - 12, startY - 35, 12, 70);
+                ctx.beginPath();
+                for (let y = startY - 35; y <= startY + 35; y += 8) {
+                    ctx.moveTo(startX - 12, y);
+                    ctx.lineTo(startX, y - 6);
+                }
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // 4. 집중 하중 화살표 (P)
+            const loadPxX = startX + (a / L) * beamLengthPx;
+            ctx.strokeStyle = '#ef4444';
+            ctx.fillStyle = '#ef4444';
+            ctx.lineWidth = 3;
+
+            // 화살표 선
+            ctx.beginPath();
+            ctx.moveTo(loadPxX, startY - 45);
+            ctx.lineTo(loadPxX, startY - 3);
+            ctx.stroke();
+
+            // 화살표 촉
+            ctx.beginPath();
+            ctx.moveTo(loadPxX - 5, startY - 12);
+            ctx.lineTo(loadPxX, startY);
+            ctx.lineTo(loadPxX + 5, startY - 12);
+            ctx.fill();
+
+            // 텍스트 표기
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(`P (${a}m)`, loadPxX - 18, startY - 50);
+        }
+
+        function drawChart(xVals, defVals) {
+            const ctx = document.getElementById('deflectionChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xVals,
+                    datasets: [{
+                        label: '처짐량 (Deflection, mm)',
+                        data: defVals,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => ` 처짐량: ${context.raw.toFixed(4)} mm`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: '보 위치 x (m)' }
+                        },
+                        y: {
+                            title: { display: true, text: '처짐량 (mm)' },
+                            reverse: true // 아래 방향 처짐 직관적 표현
+                        }
+                    }
+                }
+            });
+        }
+
+        // 페이지 진입 시 자동 초기화
+        window.onload = function() {
+            calculate();
+        };
+
+        // 창 크기 변경 시 Canvas 가로 반응형 조절
+        window.onresize = function() {
+            calculate();
+        };
+    </script>
+</body>
+</html>
